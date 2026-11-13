@@ -1,0 +1,47 @@
+# Solo para desarrollo local. El despliegue real (docker-compose por nodo EC2)
+# vive en el repositorio paraguas.
+#
+# No hay emision-mock: el modulo siniestros del monolito no tiene ningun camino
+# de escritura, asi que este servicio todavia no le hace ninguna llamada a
+# emision (ver README).
+services:
+  siniestros:
+    build: .
+    container_name: siniestros
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: siniestros
+      DB_PASSWORD: siniestros
+      DB_NAME: siniestros
+      DB_LOGGING: "false"
+    ports:
+      - "3003:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: siniestros-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: siniestros
+      POSTGRES_USER: siniestros
+      POSTGRES_PASSWORD: siniestros
+    ports:
+      - "5437:5432"
+    volumes:
+      - siniestros_postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siniestros -d siniestros"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  siniestros_postgres_data:
